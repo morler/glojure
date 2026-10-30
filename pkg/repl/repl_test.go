@@ -4,6 +4,7 @@ package repl
 
 import (
 	"bytes"
+	"errors"
 	"strings"
 	"testing"
 
@@ -211,5 +212,43 @@ func TestShareClipboardText(t *testing.T) {
 	want := "(def a 1)\n\n(+ a 2)"
 	if got != want {
 		t.Fatalf("shareClipboardText() = %q, want %q", got, want)
+	}
+}
+
+func TestReadEvalPrintContinuesAfterErrors(t *testing.T) {
+	var stdout bytes.Buffer
+	o := options{stdout: &stdout}
+	calls := 0
+	evalFn := func(_ *options, _ interface{}) (string, error) {
+		calls++
+		switch calls {
+		case 1:
+			return "", errors.New("evaluation failed")
+		case 2:
+			panic("evaluation panicked")
+		default:
+			return "ok", nil
+		}
+	}
+
+	readEvalPrint("1 2 3", &o, evalFn)
+	if got, want := stdout.String(), "evaluation failed\npanic: evaluation panicked\nok\n"; got != want {
+		t.Fatalf("readEvalPrint output = %q, want %q", got, want)
+	}
+	if calls != 3 {
+		t.Fatalf("eval calls = %d, want 3", calls)
+	}
+}
+
+func TestReadEvalPrintEvaluatesFormsBeforeReadError(t *testing.T) {
+	var stdout bytes.Buffer
+	o := options{stdout: &stdout}
+	calls := 0
+	readEvalPrint("1 )", &o, func(_ *options, _ interface{}) (string, error) {
+		calls++
+		return "one", nil
+	})
+	if calls != 1 || !strings.Contains(stdout.String(), "one") || !strings.Contains(stdout.String(), "unexpected") {
+		t.Fatalf("calls = %d, output = %q; want first form evaluated and read error reported", calls, stdout.String())
 	}
 }

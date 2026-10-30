@@ -89,7 +89,13 @@ func (env *environment) applyMacro(fn lang.IFn, form lang.ISeq) (interface{}, er
 	return fn.ApplyTo(lang.NewCons(form, lang.NewCons(nil, argList))), nil
 }
 
-func (env *environment) Eval(n interface{}) (interface{}, error) {
+func (env *environment) Eval(n interface{}) (result interface{}, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			result = nil
+			err = fmt.Errorf("evaluation panic: %v", recovered)
+		}
+	}()
 	if directSelfEvaluating(n) {
 		return n, nil
 	}

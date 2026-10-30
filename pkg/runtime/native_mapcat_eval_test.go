@@ -38,13 +38,10 @@ func TestNativeMapcatPreservesValidation(t *testing.T) {
 		{`(mapcat identity 42)`, "mapcat expected a seqable collection"},
 	} {
 		t.Run(tc.code, func(t *testing.T) {
-			defer func() {
-				got := recover()
-				if got == nil || !strings.Contains(fmt.Sprint(got), tc.message) {
-					t.Errorf("panic = %v, want %s", got, tc.message)
-				}
-			}()
-			ReadEval(tc.code)
+			got, ok := ReadEval(tc.code).(error)
+			if !ok || !strings.Contains(fmt.Sprint(got), tc.message) {
+				t.Errorf("ReadEval error = %v, want %s", got, tc.message)
+			}
 		})
 	}
 }

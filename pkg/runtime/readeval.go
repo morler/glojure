@@ -37,6 +37,8 @@ func WithFilename(filename string) ReadEvalOption {
 
 // ReadEval reads and evaluates a string that may contain one or more
 // forms in the global environment.
+// ReadEval returns the last evaluated value, or an error value if reading or evaluation fails.
+// Errors are returned as values to preserve the original single-result API.
 func ReadEval(code string, options ...ReadEvalOption) interface{} {
 	var opts readEvalOptions
 	for _, opt := range options {
@@ -64,11 +66,11 @@ func ReadEval(code string, options ...ReadEvalOption) interface{} {
 			break
 		}
 		if err != nil {
-			panic(fmt.Sprintf("error reading %v: %v", opts.filename, err))
+			return fmt.Errorf("error reading %v: %w", opts.filename, err)
 		}
 		lastValue, err = env.Eval(expr)
 		if err != nil {
-			panic(fmt.Sprintf("error evaluating %v: %v", opts.filename, err))
+			return fmt.Errorf("error evaluating %v: %w", opts.filename, err)
 		}
 	}
 	return lastValue

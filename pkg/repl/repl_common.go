@@ -223,13 +223,24 @@ func readEvalPrint(input string, o *options, evalFn EvalFunc) {
 			return o.env.CurrentNamespace()
 		}),
 	)
-	vals, err := rdr.ReadAll()
-	if err != nil {
-		fmt.Fprintln(o.stdout, err)
-		return
-	}
-	for _, val := range vals {
-		out, err := evalFn(o, val)
+	for {
+		val, err := rdr.ReadOne()
+		if err == reader.ErrEOF {
+			return
+		}
+		if err != nil {
+			fmt.Fprintln(o.stdout, err)
+			return
+		}
+		var out string
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = fmt.Errorf("panic: %v", r)
+				}
+			}()
+			out, err = evalFn(o, val)
+		}()
 		if err != nil {
 			fmt.Fprintln(o.stdout, err)
 			continue
